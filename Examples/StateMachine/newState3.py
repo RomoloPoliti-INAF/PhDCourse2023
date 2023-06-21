@@ -6,22 +6,23 @@ import math
 import time
 from datetime import datetime
 from functools import wraps
+from os import environ
 from pathlib import Path
 from textwrap import wrap
 from threading import Thread
 
 import yaml
 from bitstring import BitArray
-from rich import print
-from rich.console import Console
-from rich.pretty import pprint
-from rich.prompt import Prompt
-
 from commands import MECommands, PECommands
 from commons import *
 from exceptions import *
 from loginit import logInit
-from os import environ
+from rich import print
+from rich.console import Console
+from rich.panel import Panel
+from rich.pretty import pprint
+from rich.prompt import Prompt
+from rich.table import Table
 
 console = Console()
 
@@ -358,48 +359,67 @@ def writeTimeLine(f):
 def exec(machine,cmd,id):
     machine.run(cmd,id)
 
-def interact(machine, timer: Clock, fName: str = 'cmd.csv',
+
+def interact(machine: StateMachine, timer: Clock, fName: str = 'cmd.csv',
              log: logging = logging.getLogger('StateMachine'), debug: bool = False,
              verbose: bool = False):
     environ.setdefault('TIMELINE_FILE', fName)
-    id=0
+    id = 0
+    console.rule(style='green')
+    console.print(f"StateMachine - Interactive Mode",
+                  style="bold red on yellow", justify="center")
+    console.rule(style='green')
     while True:
-        cmd=Prompt.ask('command')
-        cmd=cmd.strip().upper()
+        cmd = Prompt.ask('command', console=console)
+        cmd = cmd.strip().upper()
         if cmd.startswith('N'):
             log.info("TM(1,1)")
             log.info(
                 f"Executing {cmd}: {machine.cmd_description(cmd)}")
             if verbose:
-                print(f"{MSG.INFO}TM(1,1)")
-                print(
+                console.print(f"{MSG.INFO}TM(1,1)")
+                console.print(
                     f"{MSG.INFO}Executing {cmd}: {machine.cmd_description(cmd)} ")
             try:
-                exec(machine,cmd, id=id)
+                exec(machine, cmd, id=id)
             except Command_Error as e:
                 # definire un 1,2
-                print('TM(1,2)')
-                print(e)
+                console.print('TM(1,2)')
+                console.print(e)
             except Command_Device_Error as e:
                 # definire un 1,2
-                print('TM(1,2)')
-                print(e)
+                console.print('TM(1,2)')
+                console.print(e)
             except State_Error as e:
-                print('TM(1,2)')
-                print(e)
+                console.print('TM(1,2)')
+                console.print(e)
         else:
-            if cmd =='EXIT':
+            if cmd in ['EXIT', 'X', 'Q', 'E']:
                 break
-            elif cmd == 'HELP':
+            elif cmd in ['HELP', 'H', '?']:
                 cmList = readCmdDb()
+                tb = Table()
+                tb.add_column('TC', style='bold yellow')
+                tb.add_column('Destination', justify='center', style='magenta')
+                tb.add_column('Description')
                 for cml in cmList.keys():
-                    print(f"{cml}: {cmList[cml]['destination']} - {machine.cmd_description(cml)}")
+                    tb.add_row(cml, cmList[cml]['destination'],
+                               machine.cmd_description(cml))
+                console.print(tb)
+                tb2 = Table.grid()
+                tb2.add_column(style='yellow')
+                tb2.add_column()
+                tb2.add_column()
+                tb2.add_row('EXIT/X/Q/E', '    ',
+                            'To exit from the interactive mode')
+                tb2.add_row('HELP/H/?', ' ', 'Display this help')
+                tb2.add_row('STATUS', ' ',
+                            'Display the status of the StateMachine')
+                console.print(Panel(tb2, title='Internal Commands'))
+            elif cmd == 'STATUS':
+                console.print(machine)
+                console.print(machine.PE)
         id += 1
-    
-    
-    
-    pass
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Finite State Machine')

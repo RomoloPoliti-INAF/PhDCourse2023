@@ -16,6 +16,9 @@ from rich import print
 from rich.console import Console
 from rich.pretty import pprint
 from rich.prompt import Prompt
+from rich.table import Table
+from rich.panel import Panel
+
 
 from commands import MECommands, PECommands
 from commons import *
@@ -201,7 +204,7 @@ class StateMachine:
             f"{MSG.INFO}[magenta]TM(5,1)[/magenta] Changing the state: {cs} -> {value}")
         self._state = value
 
-    def __str__(self): return f"Machine {self.name}\nState: {self.state}"
+    def __str__(self): return f"Machine {self.name}\nState: {self.state}\n------"
 
     @background
     def do(self, cmd: str, id: int):
@@ -238,7 +241,7 @@ class PE(StateMachine):
 class ME(StateMachine):
     def __init__(self, name, initialState, tranTable, verbose: bool = False):
         super().__init__(name, initialState, tranTable)
-        self.PE = PE('PE', STATE.OFF, tranTable, verbose)
+        self.PE = PE('SIM PE', STATE.OFF, tranTable, verbose)
         self.Commands = MECommands(verbose, console)
 
     def run(self, cmd: str, id: int):
@@ -258,6 +261,7 @@ class ME(StateMachine):
         if self.transitionTable[cmd]['destination'] == 'PE':
             action = getattr(self.PE.Commands, cmd)
         return action.__doc__
+    
 
 
 def run(machine, timer: Clock, fName: str = 'timeline.txt',
@@ -351,7 +355,7 @@ def writeTimeLine(f):
 def exec(machine,cmd,id):
     machine.run(cmd,id)
 
-def interact(machine, timer: Clock, fName: str = 'cmd.csv',
+def interact(machine:StateMachine, timer: Clock, fName: str = 'cmd.csv',
              log: logging = logging.getLogger('StateMachine'), debug: bool = False,
              verbose: bool = False):
     environ.setdefault('TIMELINE_FILE', fName)
@@ -360,36 +364,53 @@ def interact(machine, timer: Clock, fName: str = 'cmd.csv',
     console.print(f"StateMachine - Interactive Mode",style="bold red on yellow",justify="center")
     console.rule(style='green')
     while True:
-        cmd=Prompt.ask('command')
+        cmd=Prompt.ask('command',console=console)
         cmd=cmd.strip().upper()
         if cmd.startswith('N'):
             log.info("TM(1,1)")
             log.info(
                 f"Executing {cmd}: {machine.cmd_description(cmd)}")
             if verbose:
-                print(f"{MSG.INFO}TM(1,1)")
-                print(
+                console.print(f"{MSG.INFO}TM(1,1)")
+                console.print(
                     f"{MSG.INFO}Executing {cmd}: {machine.cmd_description(cmd)} ")
             try:
                 exec(machine,cmd, id=id)
             except Command_Error as e:
                 # definire un 1,2
-                print('TM(1,2)')
-                print(e)
+                console.print('TM(1,2)')
+                console.print(e)
             except Command_Device_Error as e:
                 # definire un 1,2
-                print('TM(1,2)')
-                print(e)
+                console.print('TM(1,2)')
+                console.print(e)
             except State_Error as e:
-                print('TM(1,2)')
-                print(e)
+                console.print('TM(1,2)')
+                console.print(e)
         else:
-            if cmd =='EXIT':
+            if cmd in ['EXIT','X','Q','E']:
                 break
-            elif cmd == 'HELP':
+            elif cmd in ['HELP','H','?']:
                 cmList = readCmdDb()
+                tb = Table()
+                tb.add_column('TC', style='bold yellow')
+                tb.add_column('Destination',justify='center',style='magenta')
+                tb.add_column('Description')
                 for cml in cmList.keys():
-                    print(f"{cml}: {cmList[cml]['destination']} - {machine.cmd_description(cml)}")
+                    tb.add_row(cml, cmList[cml]['destination'],
+                               machine.cmd_description(cml))
+                console.print(tb)
+                tb2=Table.grid()
+                tb2.add_column(style='yellow')
+                tb2.add_column()
+                tb2.add_column()
+                tb2.add_row('EXIT/X/Q/E','    ','To exit from the interactive mode')
+                tb2.add_row('HELP/H/?',' ','Display this help')
+                tb2.add_row('STATUS',' ','Display the status of the StateMachine')
+                console.print(Panel(tb2,title='Internal Commands'))
+            elif cmd == 'STATUS':
+                console.print(machine)
+                console.print(machine.PE)
         id += 1
     
     
@@ -430,7 +451,7 @@ if __name__ == '__main__':
 
     timer = Clock()
 
-    machine = ME('SIM', STATE.OFF, readCmdDb(), args.verbose)
+    machine = ME('SIM ME', STATE.OFF, readCmdDb(), args.verbose)
     log.debug(f"Starting the Machine {machine.name}")
     if args.interactive:
         with open(fPath(cfg['cmdHistory']),FMODE.WRITE) as f:

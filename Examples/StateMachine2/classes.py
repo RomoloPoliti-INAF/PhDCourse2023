@@ -34,6 +34,8 @@ class Command:
         cfg = yaml.safe_load(open(confFile, FMODE.READ))
         flag = False
         for elem in cfg['commands']:
+            # for item in elem:
+            #     setattr(self,item, elem[item])
             if elem['name'] == cName:
                 self.name = elem["name"]
                 self.destination = elem["destination"]

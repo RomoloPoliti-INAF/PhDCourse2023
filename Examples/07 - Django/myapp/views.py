@@ -18,7 +18,7 @@ def test(request):
 
 def list(request):
     tmpl=loader.get_template('myapp/list.html')
-    dat=Example.objects.order_by('surname')
+    dat=Example.objects.filter(name='pippo')
     context={
         'title': 'Data list',
         'data':dat,

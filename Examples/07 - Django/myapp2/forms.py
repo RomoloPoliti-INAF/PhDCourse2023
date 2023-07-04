@@ -16,5 +16,6 @@ class ExampleForm(ModelForm):
             'lavoro': Select(attrs={
                 'class': 'form-select',
                 'aria-label': 'Seleziona il lavoro',
+                'placeholder': "Seleziona il lavoro",
                 })
             }

@@ -5,5 +5,6 @@ WORKDIR /flask
 COPY ./requirements.txt /flask/requirements.txt
 COPY ./myapp.py /flask/myapp.py
 RUN pip install -r requirements.txt
+EXPOSE 5010
 ENTRYPOINT [ "python3" ] 
 CMD [ "myapp.py" ]
